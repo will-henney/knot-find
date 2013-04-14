@@ -1,0 +1,31 @@
+Find knots in images of PNe
+
+In particular, find knots in images of the Ring Nebula and look for correlations with the radial spokes seen in the halo. 
+
+* Programs
+
+
+
+** remap.py
+
+#+BEGIN_EXAMPLE
+$ python remap.py --help
+usage: remap.py [-h] [--center XC YC] [--rmax RMAX] [--PA PA]
+                [--method {nearest,linear,cubic}]
+                filename
+
+Remap a Cartesian image to polar coordinates
+
+positional arguments:
+  filename              Name of image file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --center XC YC        Center of image (in pixel units, 1-based)
+                        (default: (1995, 1897))
+  --rmax RMAX           Maximum radius to include in output image
+                        (default: 89.0)
+  --PA PA               PA corresponding to theta=0 (default: 295.0)
+  --method {nearest,linear,cubic}
+                        Interpolation mehod (default: nearest)
+#+END_EXAMPLE
