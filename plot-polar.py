@@ -92,6 +92,22 @@ kbright = np.sum(h2_hdu.data*kmask, axis=0)/np.sum(kmask, axis=0)
 sbright /= sbright.mean()
 kbright /= kbright.mean()
 
+# Plot the original data
+plt.subplot(211)
+plt.plot(theta, kbright, label="knots")
+plt.plot(theta, sbright, label="spokes")
+plt.xticks(th_ticks_5)
+plt.minorticks_on()
+plt.xlabel("theta")
+plt.ylabel("brightness")
+plt.grid(axis='y')
+plt.grid(which='minor', axis='x', alpha=0.3, linestyle='-', linewidth=0.1)
+plt.grid(which='major', axis='x', alpha=0.6, linestyle='-', linewidth=0.1)
+plt.legend()
+plt.axis("tight")
+plt.xlim(0.0, 360.0)
+plt.ylim(0.0, 3.0)
+
 # Filter out the low frequencies
 fs = 10.0  # sampling rate in 1/deg
 # smooth structures with sizes in degrees larger than this
@@ -107,6 +123,7 @@ print sbright.min(), sbright.mean(), sbright.max(), sbright.std()
 sbright /= 2*sbright.std()
 kbright /= kbright.std()
 
+plt.subplot(212)
 plt.plot(theta, kbright, label="knots")
 plt.plot(theta, sbright, label="spokes")
 plt.fill_between(theta, kbright*sbright,
@@ -126,6 +143,6 @@ plt.legend()
 plt.axis("tight")
 plt.xlim(0.0, 360.0)
 plt.ylim(-2.0, 2.0)
-plt.gcf().set_size_inches((50, 6))
+plt.gcf().set_size_inches((50, 12))
 plt.savefig("knot-spoke.pdf")
 

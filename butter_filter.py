@@ -72,11 +72,12 @@ if __name__ == "__main__":
     x += 0.01 * np.cos(2 * np.pi * 112 * t + 0.1)
     x += a * np.cos(2 * np.pi * f0 * t + .11)
     x += 0.03 * np.cos(2 * np.pi * 2000 * t)
+    x += 0.3*np.exp(-0.5*(t-0.025)**2 / (0.0003)**2)
     plt.figure(2)
     plt.clf()
     plt.plot(t, x, label='Noisy signal')
 
-    y = butter_highpass_filter(x, lowcut, fs, order=6)
+    y = butter_bandpass_filter(x, lowcut, highcut, fs, order=6)
     # y = butter_bandpass_filter(x, lowcut, highcut, fs, order=6)
     plt.plot(t, y, label='Filtered signal (%g Hz)' % f0)
     plt.xlabel('time (seconds)')

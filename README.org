@@ -29,3 +29,32 @@ optional arguments:
   --method {nearest,linear,cubic}
                         Interpolation mehod (default: nearest)
 #+END_EXAMPLE
+
+
+
+
+** butter-filter.py
+
+This is a library that implements Butterworth filters (band pass or high pass).   Unfortunately, testing shows that this sort of filter is not appropriate in this case.  It is very good at isolating a periodic signal in the presence of noise at other frequencies.  But it has two probems from our point of view: 
+
+1. It introduces a phase shift in the signal
+2. It doesn't work well with impulsive signals, producing serious ringing. 
+
+Both of these problems are apparent in [[butter-filter-example.pdf]]
+
+So, back to the drawing board!
+
+
+** plot-polar.py
+
+This does two things:
+
+1. It plots an [[file:polar.pdf][image]] of the nebula in H_2 and [O III] emission, shown in polar coordinates.
+   + This image shows the boundaries of the knot and spoke regions that I have determined by guesswork.  
+2. It plots a [[file:knot-spoke.pdf][graph]] of the mean brightness as a function of \theta for the knot and spoke regions.
+   + The top panel shows the unfiltered results
+   + The bottom panel shows the filtered results, which in principal have had the large-scale variation removed
+     + The colored parts show the positive knot-spoke correlations in red and the negative knot-spoke anti-correlations in magenta
+     + As expected, the anti-corelations dominate in the flanks
+     + Unfortunately, the deficiencies in the Butterworth filter mean that we cannot identify features with features in the original images.  
+
