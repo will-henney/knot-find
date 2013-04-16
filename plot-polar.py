@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import astropy.io.fits as pyfits
 import numpy as np
+from butter_filter import butter_highpass_filter
 
 
 def Rout(th):
@@ -49,7 +50,10 @@ Theta, Radius = np.meshgrid(theta, radius)
 bbox = [theta.min() - 0.05, theta.max() + 0.05,
         radius.min() - 0.05, radius.max() + 0.05]
 
-th_ticks = np.linspace(0.0, 360.0, 13)
+# Every 30 degrees
+th_ticks_30 = np.linspace(0.0, 360.0, 13)
+# Every 5 degrees
+th_ticks_5 = np.linspace(0.0, 360.0, 73)
 
 plt.subplot(211)
 plt.imshow(h2_hdu.data, vmin=-2.8, vmax=100.0,
@@ -57,7 +61,7 @@ plt.imshow(h2_hdu.data, vmin=-2.8, vmax=100.0,
            cmap=plt.cm.gray_r, aspect="auto",
            origin="lower", interpolation="nearest")
 add_lines()
-plt.xticks(th_ticks)
+plt.xticks(th_ticks_30)
 plt.ylabel("radius")
 plt.title("H_2 and [O III]")
 plt.grid()
@@ -70,7 +74,7 @@ plt.imshow(np.log10(oiii_hdu.data), vmin=-2.0, vmax=np.log10(3.0),
            origin="lower", interpolation="nearest")
 add_lines()
 plt.xlabel("theta")
-plt.xticks(th_ticks)
+plt.xticks(th_ticks_30)
 plt.ylabel("radius")
 plt.grid()
 plt.axis(bbox)
@@ -82,20 +86,46 @@ kmask = make_knot_mask(Theta, Radius)
 smask = make_spoke_mask(Theta, Radius)
 
 sbright = np.sum(h2_hdu.data*smask, axis=0)/np.sum(smask, axis=0)
-# kbright = np.sum(h2_hdu.data*kmask, axis=0)/np.sum(kmask, axis=0)
-kbright = np.max(h2_hdu.data*kmask, axis=0)
+kbright = np.sum(h2_hdu.data*kmask, axis=0)/np.sum(kmask, axis=0)
+# kbright = np.max(h2_hdu.data*kmask, axis=0)
 
 sbright /= sbright.mean()
 kbright /= kbright.mean()
 
+# Filter out the low frequencies
+fs = 10.0  # sampling rate in 1/deg
+# smooth structures with sizes in degrees larger than this
+smooth_scale = 4.0
+lowcut = 1./smooth_scale
+sbright = butter_highpass_filter(sbright, lowcut, fs)
+kbright = butter_highpass_filter(kbright, lowcut, fs)
+
+print kbright.min(), kbright.mean(), kbright.max(), kbright.std()
+print sbright.min(), sbright.mean(), sbright.max(), sbright.std()
+
+# normalize by std
+sbright /= 2*sbright.std()
+kbright /= kbright.std()
+
 plt.plot(theta, kbright, label="knots")
 plt.plot(theta, sbright, label="spokes")
-plt.xticks(th_ticks)
+plt.fill_between(theta, kbright*sbright,
+                 where=kbright*sbright > 0.0,
+                 color="r", alpha=0.5, label="product")
+plt.fill_between(theta, kbright*sbright,
+                 where=kbright*sbright < 0.0,
+                 color="m", alpha=0.7, label="product")
+plt.xticks(th_ticks_5)
+plt.minorticks_on()
 plt.xlabel("theta")
 plt.ylabel("brightness")
-plt.grid()
+plt.grid(axis='y')
+plt.grid(which='minor', axis='x', alpha=0.3, linestyle='-', linewidth=0.1)
+plt.grid(which='major', axis='x', alpha=0.6, linestyle='-', linewidth=0.1)
 plt.legend()
+plt.axis("tight")
 plt.xlim(0.0, 360.0)
-plt.ylim(0.0, 3.0)
+plt.ylim(-2.0, 2.0)
+plt.gcf().set_size_inches((50, 6))
 plt.savefig("knot-spoke.pdf")
 

@@ -1,2 +1,3 @@
 data/H2.fits
 data/OIII.fits
+*.pyc
