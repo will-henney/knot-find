@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import astropy.io.fits as pyfits
 import numpy as np
-from butter_filter import butter_highpass_filter
+from gauss_filter import gauss_highpass_filter
 
 
 def Rout(th):
@@ -86,8 +86,8 @@ kmask = make_knot_mask(Theta, Radius)
 smask = make_spoke_mask(Theta, Radius)
 
 sbright = np.sum(h2_hdu.data*smask, axis=0)/np.sum(smask, axis=0)
-kbright = np.sum(h2_hdu.data*kmask, axis=0)/np.sum(kmask, axis=0)
-# kbright = np.max(h2_hdu.data*kmask, axis=0)
+# kbright = np.sum(h2_hdu.data*kmask, axis=0)/np.sum(kmask, axis=0)
+kbright = np.max(h2_hdu.data*kmask, axis=0)
 
 sbright /= sbright.mean()
 kbright /= kbright.mean()
@@ -111,10 +111,9 @@ plt.ylim(0.0, 3.0)
 # Filter out the low frequencies
 fs = 10.0  # sampling rate in 1/deg
 # smooth structures with sizes in degrees larger than this
-smooth_scale = 4.0
-lowcut = 1./smooth_scale
-sbright = butter_highpass_filter(sbright, lowcut, fs)
-kbright = butter_highpass_filter(kbright, lowcut, fs)
+smooth_scale = 2.0
+sbright = gauss_highpass_filter(sbright, smooth_scale, fs)
+kbright = gauss_highpass_filter(kbright, smooth_scale, fs)
 
 print kbright.min(), kbright.mean(), kbright.max(), kbright.std()
 print sbright.min(), sbright.mean(), sbright.max(), sbright.std()
