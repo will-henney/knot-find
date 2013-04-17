@@ -4,7 +4,7 @@ import astropy.io.fits as pyfits
 import numpy as np
 import scipy.stats
 import bottleneck as bn
-from gauss_filter import gauss_highpass_filter
+from gauss_filter import gauss_highpass_filter, gauss_lowpass_filter
 
 
 def Rout(th):
@@ -44,7 +44,7 @@ def Rkmin(th):
 
 def Rsmax(th):
     """Maximum radius of spoke region"""
-    return 15.0 + Rkmax(th)
+    return 10.0 + Rkmax(th)
 
 
 def Rsmin(th):
@@ -221,14 +221,20 @@ kbright = masked_centile_by_column(h2data, kmask & np.isfinite(h2data))
 sbright /= bn.nanmean(sbright)
 kbright /= bn.nanmean(kbright)
 
-print(sbright)
-print(kbright)
-
+# fill in any gaps in the data
+sbright[~np.isfinite(sbright)] = 1.0
+kbright[~np.isfinite(kbright)] = 1.0
 
 # Plot the original data
 plt.subplot(211)
 plt.plot(theta, kbright, label="knots")
 plt.plot(theta, sbright, label="spokes")
+plt.fill_between(theta, kbright,
+                 gauss_lowpass_filter(kbright, smooth_scale, fs),
+                 alpha=0.3, color="b")
+plt.fill_between(theta, sbright,
+                 gauss_lowpass_filter(sbright, smooth_scale, fs),
+                 alpha=0.3, color="g")
 plt.xticks(th_ticks_5)
 plt.minorticks_on()
 plt.xlabel("theta")
@@ -254,15 +260,38 @@ print(bn.nanmin(sbright), bn.nanmean(sbright),
 sbright /= bn.nanstd(sbright)
 kbright /= bn.nanstd(kbright)
 
+# positive and negative correlations
+corr = kbright*sbright
+pmask = corr > 0.0
+nmask = ~pmask
+
+print()
+print(*["------"]*6, sep="\t")
+print("Octant", "Th_1", "Th_2", "Pos", "Neg", "Diff", sep="\t")
+print(*["------"]*6, sep="\t")
+for ioctant in range(8):
+    joctant = (theta/45.0).astype(int)
+    thmask = joctant == ioctant
+    print(ioctant, 45*ioctant, 45*(ioctant+1),
+          int(corr[pmask & thmask].sum()),
+          int(corr[nmask & thmask].sum()),
+          int(corr[thmask].sum()),
+          sep="\t")
+print(*["------"]*6, sep="\t")
+print("all", 0, 360,
+      int(corr[pmask].sum()),
+      int(corr[nmask].sum()),
+      int(corr.sum()),
+      sep="\t")
+print(*["------"]*6, sep="\t")
+
 plt.subplot(212)
 plt.plot(theta, kbright, label="knots")
 plt.plot(theta, sbright, label="spokes")
-plt.fill_between(theta, kbright*sbright,
-                 where=kbright*sbright > 0.0,
-                 color="r", alpha=0.5, label="product")
-plt.fill_between(theta, kbright*sbright,
-                 where=kbright*sbright < 0.0,
-                 color="m", alpha=0.7, label="product")
+plt.fill_between(theta, corr, where=pmask,
+                 color="r", alpha=0.5, label="positive")
+plt.fill_between(theta, corr, where=nmask,
+                 color="m", alpha=0.7, label="negative")
 plt.xticks(th_ticks_5)
 plt.minorticks_on()
 plt.xlabel("theta")
