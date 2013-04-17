@@ -1,36 +1,71 @@
+from __future__ import print_function
 import matplotlib.pyplot as plt
 import astropy.io.fits as pyfits
 import numpy as np
+import scipy.stats
+import bottleneck as bn
 from gauss_filter import gauss_highpass_filter
 
 
 def Rout(th):
+    """Principal outer boundary of knotty ring"""
     return 36.0 + 8.0*np.cos(2*np.radians(th))
 
 
 def Rmid(th):
+    """Subsidiary outer boundary of knotty ring"""
     return 30.0 + 4.0*np.cos(np.radians(th) - 1.5*np.pi)
 
 
+def Rin1(th):
+    """Inner boundary of knots in quadrants 1 and 2"""
+    return 25.0 + 11.0*np.cos(np.radians(th) - 1.5*np.pi)
+
+
+def Rin2(th):
+    """Inner boundary of knots in quadrants 3 and 4"""
+    return 26.0 + 9.0*np.cos(np.radians(th) - 0.5*np.pi)
+
+
+def Rin(th):
+    """Combined inner boundary"""
+    return np.minimum(Rin1(th), Rin2(th))
+
+
+def Rkmax(th):
+    """Maximum radius of knot region"""
+    return np.maximum(1.05*Rout(th), 1.03*Rmid(th))
+
+
+def Rkmin(th):
+    """Minimum radius of knot region"""
+    return np.minimum(22.0, Rin(th))
+
+
+def Rsmax(th):
+    """Maximum radius of spoke region"""
+    return 15.0 + Rkmax(th)
+
+
+def Rsmin(th):
+    """Minimum radius of spoke region"""
+    return Rkmax(th)
+
+    
 def add_lines():
+    """Draw boundaries of knot and spoke regions"""
     th = np.degrees(np.linspace(0.0, 2.0*np.pi, 200))
-    plt.plot(th, 1.03*Rout(th), 'r--')
-    plt.plot(th, 1.03*Rmid(th), 'b--')
-    plt.plot(th, 0.5*Rout(th), 'r-.')
-    plt.plot(th, 0.7*Rmid(th), 'b-.')
-    plt.plot(th, 50.0*np.ones_like(th), 'g-')
+    plt.plot(th, Rkmax(th), 'r-')
+    plt.plot(th, Rkmin(th), 'b-')
+    plt.plot(th, Rsmax(th), 'g-')
 
 
 def make_knot_mask(Th, R):
-    mask = ((R < np.maximum(1.03*Rout(Th), 1.03*Rmid(Th))) &
-            (R > np.minimum(0.5**Rout(Th), 0.7*Rmid(Th))))
-    return mask
+    return (R < Rkmax(Th)) & (R > Rkmin(Th))
 
 
 def make_spoke_mask(Th, R):
-    mask = ((R > np.maximum(1.03*Rout(Th), 1.03*Rmid(Th))) &
-            (R < 50.0))
-    return mask
+    return (R < Rsmax(Th)) & (R > Rsmin(Th))
 
 
 def make_grids(hdr):
@@ -41,7 +76,7 @@ def make_grids(hdr):
     return th_pts, r_pts
 
 
-h2_hdu = pyfits.open("data/H2-crop-remap-nearest.fits")[0]
+h2_hdu = pyfits.open("data/H2-remap-nearest.fits")[0]
 oiii_hdu = pyfits.open("data/OIII-remap-nearest.fits")[0]
 
 theta, radius = make_grids(h2_hdu.header)
@@ -81,16 +116,114 @@ plt.axis(bbox)
 
 plt.savefig("polar.pdf")
 
+
+# Filter out the low frequencies
+fs = 10.0  # sampling rate in 1/deg
+# smooth structures with sizes in degrees larger than this
+smooth_scale = 5.0
+
+# plot filtered images
+plt.clf()
+plt.subplot(211)
+h2_filtered = gauss_highpass_filter(
+    np.log10(5.0 + h2_hdu.data), smooth_scale, fs
+)
+plt.imshow(h2_filtered, vmin=-0.2, vmax=0.25,
+           extent=bbox,
+           cmap=plt.cm.gray_r, aspect="auto",
+           origin="lower", interpolation="nearest")
+add_lines()
+plt.xticks(th_ticks_30)
+plt.ylabel("radius")
+s = "H_2 and [O III] high-pass filtered at {} degrees"
+plt.title(s.format(int(smooth_scale)))
+plt.grid()
+plt.axis(bbox)
+
+plt.subplot(212)
+oiii_filtered = gauss_highpass_filter(
+    np.log10(0.01 + oiii_hdu.data), smooth_scale, fs
+)
+plt.imshow(oiii_filtered, vmin=-0.3, vmax=0.4,
+           extent=bbox,
+           cmap=plt.cm.gray_r, aspect="auto",
+           origin="lower", interpolation="nearest")
+add_lines()
+plt.xlabel("theta")
+plt.xticks(th_ticks_30)
+plt.ylabel("radius")
+plt.grid()
+plt.axis(bbox)
+
+plt.savefig("polar-filtered.pdf")
+
+
 plt.clf()
 kmask = make_knot_mask(Theta, Radius)
 smask = make_spoke_mask(Theta, Radius)
 
-sbright = np.sum(h2_hdu.data*smask, axis=0)/np.sum(smask, axis=0)
-# kbright = np.sum(h2_hdu.data*kmask, axis=0)/np.sum(kmask, axis=0)
-kbright = np.max(h2_hdu.data*kmask, axis=0)
 
-sbright /= sbright.mean()
-kbright /= kbright.mean()
+def masked_median_by_column(data, mask):
+    """Calculate the masked median of each column of data
+
+    Only consider elements where mask is true
+    """
+    return np.ma.median(
+        np.ma.array(data, mask=~mask),
+        axis=0
+    ).filled(0.0)
+
+
+def masked_mean_by_column(data, mask):
+    """Calculate the masked median of each column of data
+
+    Only consider elements where mask is true
+    """
+    return np.sum(data*mask, axis=0)/np.sum(mask, axis=0)
+
+
+def masked_sum_by_column(data, mask):
+    """Calculate the masked sum of each column of data
+
+    Only consider elements where mask is true
+    """
+    return np.sum(data*mask, axis=0)
+
+
+def masked_max_by_column(data, mask):
+    """Calculate the masked maximum of each column of data
+
+    Only consider elements where mask is true
+    """
+    return np.max(data*mask, axis=0)
+
+
+def masked_centile_by_column(data, mask, centile=90):
+    """Calculate the masked centile of each column of data
+
+    Only consider elements where mask is true
+    """
+    return scipy.stats.mstats.mquantiles(
+        np.ma.array(data, mask=~mask),
+        prob=[centile/100.],
+        axis=0
+    )[0].filled(0.0)
+
+
+# sbright = np.sum(h2_hdu.data*smask, axis=0)/np.sum(smask, axis=0)
+# # kbright = np.sum(h2_hdu.data*kmask, axis=0)/np.sum(kmask, axis=0)
+# kbright = np.max(h2_hdu.data*kmask, axis=0)
+
+h2data = np.log10(5.0 + h2_hdu.data)
+sbright = masked_mean_by_column(h2data, smask & np.isfinite(h2data))
+kbright = masked_centile_by_column(h2data, kmask & np.isfinite(h2data))
+
+sbright /= bn.nanmean(sbright)
+kbright /= bn.nanmean(kbright)
+
+print(sbright)
+print(kbright)
+
 
 # Plot the original data
 plt.subplot(211)
@@ -106,21 +239,20 @@ plt.grid(which='major', axis='x', alpha=0.6, linestyle='-', linewidth=0.1)
 plt.legend()
 plt.axis("tight")
 plt.xlim(0.0, 360.0)
-plt.ylim(0.0, 3.0)
+plt.title("Normalized average brightness profiles versus angle")
+# plt.ylim(0.0, 3.0)
 
-# Filter out the low frequencies
-fs = 10.0  # sampling rate in 1/deg
-# smooth structures with sizes in degrees larger than this
-smooth_scale = 2.0
 sbright = gauss_highpass_filter(sbright, smooth_scale, fs)
 kbright = gauss_highpass_filter(kbright, smooth_scale, fs)
 
-print kbright.min(), kbright.mean(), kbright.max(), kbright.std()
-print sbright.min(), sbright.mean(), sbright.max(), sbright.std()
+print(bn.nanmin(kbright), bn.nanmean(kbright),
+      bn.nanmax(kbright), bn.nanstd(kbright))
+print(bn.nanmin(sbright), bn.nanmean(sbright),
+      bn.nanmax(sbright), bn.nanstd(sbright))
 
 # normalize by std
-sbright /= 2*sbright.std()
-kbright /= kbright.std()
+sbright /= bn.nanstd(sbright)
+kbright /= bn.nanstd(kbright)
 
 plt.subplot(212)
 plt.plot(theta, kbright, label="knots")
@@ -141,7 +273,8 @@ plt.grid(which='major', axis='x', alpha=0.6, linestyle='-', linewidth=0.1)
 plt.legend()
 plt.axis("tight")
 plt.xlim(0.0, 360.0)
-plt.ylim(-2.0, 2.0)
+plt.ylim(-4.0, 4.0)
+plt.title("Filtered brightness profiles versus angle")
 plt.gcf().set_size_inches((50, 12))
 plt.savefig("knot-spoke.pdf")
 
