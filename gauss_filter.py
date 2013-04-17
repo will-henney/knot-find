@@ -14,6 +14,11 @@ def gauss_highpass_filter(data, smooth_scale, fs, mode="wrap"):
     return data - smooth_data
 
 
+def gauss_lowpass_filter(data, smooth_scale, fs, mode="wrap"):
+    smooth_data = gaussian_filter1d(data, smooth_scale*fs, mode=mode)
+    return smooth_data
+
+
 if __name__ == "__main__":
     import numpy as np
     import matplotlib.pyplot as plt
