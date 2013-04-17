@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     # Construct regular grid in R-th
     Rmax, thmax = cmd_args.rmax, 360.0
-    dR, dth = 0.1, 0.1
+    dR, dth = 0.1, 0.05
     Rpts = np.arange(0.0, Rmax+dR, dR)
     thpts = np.arange(0.0, thmax, dth)
     Rgrid, thgrid = np.meshgrid(Rpts, thpts)
