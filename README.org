@@ -45,6 +45,11 @@ Both of these problems are apparent in [[butter-filter-example.pdf]]
 So, back to the drawing board!
 
 
+
+** gauss-filter.py
+This exposes an identical API to butter-filter.py but does the low pass filtering by convolving with a Gaussian, and then the high-pass filtering by subtracting a Guassian-convolved version with the original signal.  This works much better. 
+
+
 ** plot-polar.py
 
 This does two things:
