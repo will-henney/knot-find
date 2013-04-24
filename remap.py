@@ -7,7 +7,6 @@ import astropy.io.fits as pyfits
 from scipy.interpolate import griddata
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -49,17 +48,17 @@ if __name__ == "__main__":
     # We ignore CRPIX and use the center given on the command line
     i0, j0 = cmd_args.center
     ny, nx = hdu.data.shape
-    
+
     # Construct 2D grids of 1-based pixel coords
     I, J = np.meshgrid(1 + np.arange(nx), 1 + np.arange(ny))
-    
+
     # Cartesian grids in arcsec, where +Y points north
     X = cd11*(I - i0) + cd21*(J - j0)
     Y = cd12*(I - i0) + cd22*(J - j0)
 
     # Convert to circular coords
     R = np.sqrt(X**2 + Y**2)
-    th = (np.degrees(np.arctan2(-X, Y)) - cmd_args.PA)  % 360.0
+    th = (np.degrees(np.arctan2(-X, Y)) - cmd_args.PA) % 360.0
 
     print "R stats (min, mean, max)", R.min(), R.mean(), R.max()
     print "theta stats (min, mean, max)", th.min(), th.mean(), th.max()
@@ -73,19 +72,19 @@ if __name__ == "__main__":
     print "Grid size: ", Rgrid.shape
 
     # Interpolate image onto new grid
-    imgrid = griddata( (th.ravel(), R.ravel()), hdu.data.ravel(), 
-                       (thgrid, Rgrid), 
-                       cmd_args.method)
+    imgrid = griddata((th.ravel(), R.ravel()), hdu.data.ravel(),
+                      (thgrid, Rgrid),
+                      cmd_args.method)
 
     # Save to a new FITS file
     newhdu = pyfits.PrimaryHDU(imgrid.T)
     newhdu.header.update(
         WCSNAME="(theta, R)",
-        CRPIX1=1.0, CRPIX2=1.0, CRVAL1=0.0, CRVAL2=0.0, 
+        CRPIX1=1.0, CRPIX2=1.0, CRVAL1=0.0, CRVAL2=0.0,
         CDELT1=dth, CDELT2=dR,
         CUNIT1="deg", CUNIT2="arcsec",
         CTYPE1="theta", CTYPE2="Radius"
-        )
+    )
     stem, suff = cmd_args.filename.split(".")
     newhdu.writeto(
         "{}-{}-{}.{}".format(stem, "remap", cmd_args.method, suff),

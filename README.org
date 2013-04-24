@@ -33,6 +33,7 @@ optional arguments:
 
 
 
+
 ** butter-filter.py
 
 This is a library that implements Butterworth filters (band pass or high pass).   Unfortunately, testing shows that this sort of filter is not appropriate in this case.  It is very good at isolating a periodic signal in the presence of noise at other frequencies.  But it has two probems from our point of view: 

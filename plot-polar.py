@@ -51,7 +51,7 @@ def Rsmin(th):
     """Minimum radius of spoke region"""
     return Rkmax(th)
 
-    
+
 def add_lines():
     """Draw boundaries of knot and spoke regions"""
     th = np.degrees(np.linspace(0.0, 2.0*np.pi, 200))
@@ -306,4 +306,3 @@ plt.ylim(-4.0, 4.0)
 plt.title("Filtered brightness profiles versus angle")
 plt.gcf().set_size_inches((50, 12))
 plt.savefig("knot-spoke.pdf")
-
